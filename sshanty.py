@@ -35,7 +35,7 @@ class Host:
         return self.group.ljust(30) + self.leafname
 
 
-def open_terminal(host, profile):
+def open_shell(host, profile):
     cmd = ['gnome-terminal', '--title', f"ssh {host}"] + \
          (['--profile', profile] if profile else []) + \
          ['--', 'ssh', host]
@@ -44,6 +44,25 @@ def open_terminal(host, profile):
                      stdout=open('/dev/null', 'w'),
                      stderr=open('/dev/null', 'w'),
                      preexec_fn=os.setpgrp)
+
+
+def gmenu(items):
+    menu = Gtk.Menu()
+    for i in items:
+        menu.append(i)
+    return menu
+
+
+def gmenu_item(title: str, activate=None, sub=None):
+    item = Gtk.MenuItem()
+    item.set_label(title)
+
+    if activate:
+        item.connect("activate", lambda x: activate())
+
+    if sub:
+        item.set_submenu(sub)
+    return item
 
 
 if __name__ == '__main__':
@@ -70,26 +89,24 @@ if __name__ == '__main__':
         AppIndicator3.IndicatorCategory.APPLICATION_STATUS)
     ind.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
-    menu = Gtk.Menu()
-
     hostlist.sort(key=Host.sortkey)
     for h in hostlist:
         print(h.sortkey())
 
     hostsgrouped = itertools.groupby(hostlist, lambda h: h.group)
-    for prefix, grouphosts in hostsgrouped:
-        item = Gtk.MenuItem()
-        item.set_label(prefix)
-        menu.append(item)
 
-        submenu = Gtk.Menu()
-        item.set_submenu(submenu)
-        for gh in grouphosts:
-            ghh: Host = gh
-            sitem = Gtk.MenuItem()
-            sitem.set_label(ghh.name[-1])
-            sitem.connect("activate", lambda x, h=ghh: open_terminal(h.dnsname, h.profile))
-            submenu.append(sitem)
+    menu = gmenu(
+            [gmenu_item(
+                prefix, sub=
+                gmenu(
+                    [gmenu_item(
+                        gh.leafname, sub=
+                        gmenu(
+                            [
+                                gmenu_item("Shell", activate=lambda h=gh: open_shell(h.dnsname, h.profile))
+                            ]
+                        )) for gh in grouphosts])
+            ) for prefix, grouphosts in hostsgrouped])
 
     menu.show_all()
     ind.set_menu(menu)
