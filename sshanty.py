@@ -2,6 +2,8 @@
 import itertools
 import os
 import subprocess
+from collections import defaultdict
+from pprint import PrettyPrinter
 from typing import List, Dict
 from os.path import expanduser
 import re
@@ -27,6 +29,7 @@ class Host:
         self.leafname = self.name[-1]
         self.fullname = ".".join(self.name)
         self.profile = props.get("$profile")
+        self.tunnels = [int(x.strip()) for x in props.get("$tunnels", "").split(",") if x.strip()]
 
     def __repr__(self):
         return self.fullname
@@ -34,16 +37,24 @@ class Host:
     def sortkey(self):
         return self.group.ljust(30) + self.leafname
 
+def open_tunnel(host, port):
+    open_terminal(['ssh', host, '-N', '-v', '-L', f"127.0.0.1:{port}:localhost:{port}"], profile="Blue")
 
 def open_shell(host, profile):
-    cmd = ['gnome-terminal', '--title', f"ssh {host}"] + \
-         (['--profile', profile] if profile else []) + \
-         ['--', 'ssh', host]
-    print(cmd)
-    subprocess.Popen(cmd,
+    open_terminal(['ssh', host], profile)
+
+def open_terminal(cmd, titlex=None, profile=None):
+    title = titlex if titlex else " ".join(cmd)
+    gcmd = ['gnome-terminal'] + \
+           (['--title', title] if title else []) + \
+           (['--profile', profile] if profile else []) + \
+            ['--'] + cmd
+    print(gcmd)
+    proc = subprocess.Popen(gcmd,
                      stdout=open('/dev/null', 'w'),
                      stderr=open('/dev/null', 'w'),
                      preexec_fn=os.setpgrp)
+    print(proc)
 
 
 def gmenu(items):
@@ -72,16 +83,22 @@ if __name__ == '__main__':
 
     hostlist: List[Host] = []
 
+    hostprops = defaultdict(dict)
+
     for h in conf.hosts():
         props = conf.host(h)
         if "*" in h:
             if "$expand" in props:
                 for e in props["$expand"].split(","):
-                    hostlist += [Host(h.replace("*", e.strip()), props)]
+                    hostprops[h.replace("*", e.strip())].update(props)
             else:
                 print(f"Skip {h}")
         else:
-            hostlist += [Host(h, props)]
+            hostprops[h].update(props)
+
+    print(PrettyPrinter().pprint(hostprops))
+
+    hostlist = [Host(h, p) for h, p in hostprops.items()]
 
     ind = AppIndicator3.Indicator.new(
         "SSHanty",
@@ -90,9 +107,6 @@ if __name__ == '__main__':
     ind.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
     hostlist.sort(key=Host.sortkey)
-    for h in hostlist:
-        print(h.sortkey())
-
     hostsgrouped = itertools.groupby(hostlist, lambda h: h.group)
 
     menu = gmenu(
@@ -104,7 +118,7 @@ if __name__ == '__main__':
                         gmenu(
                             [
                                 gmenu_item("Shell", activate=lambda h=gh: open_shell(h.dnsname, h.profile))
-                            ]
+                            ] + [gmenu_item(f"Tunnel {p}", activate=lambda h=gh: open_tunnel(h.dnsname, p)) for p in gh.tunnels]
                         )) for gh in grouphosts])
             ) for prefix, grouphosts in hostsgrouped])
 
