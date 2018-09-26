@@ -2,8 +2,9 @@
 import itertools
 import os
 import subprocess
-from typing import List
+from typing import List, Dict
 from os.path import expanduser
+import re
 
 import gi
 
@@ -18,17 +19,28 @@ from gi.repository import GLib
 
 
 class Host:
-    def __init__(self, dnsname: str):
+    def __init__(self, dnsname: str, props: Dict[str, str]):
+        print(dnsname, props)
         self.dnsname = dnsname
-        self.name = list(reversed(dnsname.split(".")))
+        self.name = list(reversed(dnsname.replace("-dev", ".dev").split(".")))
+        self.group = ".".join(self.name[:-1])
+        self.leafname = self.name[-1]
         self.fullname = ".".join(self.name)
+        self.profile = props.get("$profile")
 
     def __repr__(self):
         return self.fullname
 
+    def sortkey(self):
+        return self.group.ljust(30) + self.leafname
 
-def open_terminal(host):
-    subprocess.Popen(['gnome-terminal', '--title', f"ssh {host}", '--', 'ssh', host],
+
+def open_terminal(host, profile):
+    cmd = ['gnome-terminal', '--title', f"ssh {host}"] + \
+         (['--profile', profile] if profile else []) + \
+         ['--', 'ssh', host]
+    print(cmd)
+    subprocess.Popen(cmd,
                      stdout=open('/dev/null', 'w'),
                      stderr=open('/dev/null', 'w'),
                      preexec_fn=os.setpgrp)
@@ -46,11 +58,11 @@ if __name__ == '__main__':
         if "*" in h:
             if "$expand" in props:
                 for e in props["$expand"].split(","):
-                    hostlist += [Host(h.replace("*", e.strip()))]
+                    hostlist += [Host(h.replace("*", e.strip()), props)]
             else:
                 print(f"Skip {h}")
         else:
-            hostlist += [Host(h)]
+            hostlist += [Host(h, props)]
 
     ind = AppIndicator3.Indicator.new(
         "SSHanty",
@@ -60,7 +72,11 @@ if __name__ == '__main__':
 
     menu = Gtk.Menu()
 
-    hostsgrouped = itertools.groupby(hostlist, lambda x: ".".join(x.name[:-1]))
+    hostlist.sort(key=Host.sortkey)
+    for h in hostlist:
+        print(h.sortkey())
+
+    hostsgrouped = itertools.groupby(hostlist, lambda h: h.group)
     for prefix, grouphosts in hostsgrouped:
         item = Gtk.MenuItem()
         item.set_label(prefix)
@@ -72,7 +88,7 @@ if __name__ == '__main__':
             ghh: Host = gh
             sitem = Gtk.MenuItem()
             sitem.set_label(ghh.name[-1])
-            sitem.connect("activate", lambda x, h=ghh: open_terminal(h.dnsname))
+            sitem.connect("activate", lambda x, h=ghh: open_terminal(h.dnsname, h.profile))
             submenu.append(sitem)
 
     menu.show_all()
