@@ -60,8 +60,7 @@ if __name__ == '__main__':
 
     menu = Gtk.Menu()
 
-
-    hostsgrouped = itertools.groupby(hostlist, lambda x: x.name[0] if len(x.name) >= 2 else x.name)
+    hostsgrouped = itertools.groupby(hostlist, lambda x: ".".join(x.name[:-1]))
     for prefix, grouphosts in hostsgrouped:
         item = Gtk.MenuItem()
         item.set_label(prefix)
@@ -72,7 +71,7 @@ if __name__ == '__main__':
         for gh in grouphosts:
             ghh: Host = gh
             sitem = Gtk.MenuItem()
-            sitem.set_label(ghh.fullname)
+            sitem.set_label(ghh.name[-1])
             sitem.connect("activate", lambda x, h=ghh: open_terminal(h.dnsname))
             submenu.append(sitem)
 
