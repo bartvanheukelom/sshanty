@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import getpass
 import itertools
 import os
 import subprocess
@@ -40,8 +41,16 @@ class Host:
 def open_tunnel(host, port):
     open_terminal(['ssh', host, '-N', '-v', '-L', f"127.0.0.1:{port}:localhost:{port}"], profile="Blue")
 
-def open_shell(host, profile, root=False):
-    open_terminal(['ssh', host] + (['-t', 'sudo -i'] if root else []), profile)
+def open_shell(host, profile, root=False, screen=False):
+    user = getpass.getuser().replace(' ', '_')
+    sessname = f"sshanty-{user}"
+    cmd = ["ssh", host]
+    if root:
+        if screen:
+            cmd += ['-t', f'sudo screen -DR {sessname}']
+        else:
+            cmd += ['-t', 'sudo -i']
+    open_terminal(cmd, profile)
 
 def open_terminal(cmd, titlex=None, profile=None):
     title = titlex if titlex else " ".join(cmd)
@@ -118,7 +127,8 @@ if __name__ == '__main__':
                         gmenu(
                             [
                                 gmenu_item("Shell", activate=lambda h=gh: open_shell(h.dnsname, h.profile)),
-                                gmenu_item("Root Shell", activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True))
+                                gmenu_item("Root Shell", activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True)),
+                                gmenu_item("Root Screen", activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True, screen=True))
                             ] + [gmenu_item(f"Tunnel {p}", activate=lambda h=gh: open_tunnel(h.dnsname, p)) for p in gh.tunnels]
                         )) for gh in grouphosts])
             ) for prefix, grouphosts in hostsgrouped])
