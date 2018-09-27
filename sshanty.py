@@ -45,10 +45,12 @@ def open_shell(host, profile, root=False, screen=False):
     user = getpass.getuser().replace(' ', '_')
     sessname = f"sshanty-{user}"
     cmd = ["ssh", host]
-    if root:
-        if screen:
-            cmd += ['-t', f'sudo screen -DR {sessname}']
-        else:
+    if screen:
+        if root:
+            sessname += "-as-root"
+        cmd += ['-t', f'sudo screen -DR {sessname}']
+    else:
+        if root:
             cmd += ['-t', 'sudo -i']
     open_terminal(cmd, profile)
 
@@ -126,10 +128,16 @@ if __name__ == '__main__':
                         gh.leafname, sub=
                         gmenu(
                             [
-                                gmenu_item("Shell", activate=lambda h=gh: open_shell(h.dnsname, h.profile)),
-                                gmenu_item("Root Shell", activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True)),
-                                gmenu_item("Root Screen", activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True, screen=True))
-                            ] + [gmenu_item(f"Tunnel {p}", activate=lambda h=gh: open_tunnel(h.dnsname, p)) for p in gh.tunnels]
+                                gmenu_item("Shell",
+                                           activate=lambda h=gh: open_shell(h.dnsname, h.profile)),
+                                gmenu_item("Screen",
+                                           activate=lambda h=gh: open_shell(h.dnsname, h.profile, screen=True)),
+                                gmenu_item("Root Shell",
+                                           activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True)),
+                                gmenu_item("Root Screen",
+                                           activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True, screen=True))
+                            ] + [gmenu_item(f"Tunnel {p}",
+                                            activate=lambda h=gh: open_tunnel(h.dnsname, p)) for p in gh.tunnels]
                         )) for gh in grouphosts])
             ) for prefix, grouphosts in hostsgrouped])
 
