@@ -143,6 +143,7 @@ if __name__ == '__main__':
                                                 activate=lambda h=gh: open_tunnel(h.dnsname, p)) for p in gh.tunnels]
                             )) for gh in grouphosts])
                 ) for prefix, grouphosts in hostsgrouped] + [
+                    Gtk.SeparatorMenuItem(),
                     gmenu_item("Reload", activate=lambda: Timer(0.25, setup).start())
                 ])
 
