@@ -1,0 +1,7 @@
+Host *.bartvh.nl
+#$Expand floop,flap
+#$Tunnels 8080
+Host *.dev.thingifier
+#$Expand db,svc
+Host *.prod.thingifier
+
