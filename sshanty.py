@@ -8,19 +8,13 @@ from pprint import PrettyPrinter
 from threading import Timer
 from typing import List, Dict
 from os.path import expanduser
-import re
-
-import gi
 
 from sshconf import SshConfig
 
+import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('AppIndicator3', '0.1')
-
-from gi.repository import Gtk
-from gi.repository import AppIndicator3
-from gi.repository import GLib
-
+from gi.repository import Gtk, AppIndicator3, GLib, Gio
 
 class Host:
     def __init__(self, dnsname: str, props: Dict[str, str]):
@@ -96,9 +90,11 @@ if __name__ == '__main__':
         AppIndicator3.IndicatorCategory.APPLICATION_STATUS)
     ind.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
+    configfile = expanduser("~/.ssh/config")
+
     def setup():
 
-        with open(expanduser("~/.ssh/config")) as cf:
+        with open(configfile) as cf:
             conf = SshConfig(cf.readlines())
 
         hostlist: List[Host] = []
@@ -151,6 +147,10 @@ if __name__ == '__main__':
         ind.set_menu(menu)
 
     setup()
+    # def change():
+    #     print("Config changed")
+    # file = Gio.File.new_for_path(configfile)
+    # file.monitor_file(Gio.FileMonitorFlags.NONE, None).connect("changed", change)
 
     # Use GLib because Gtk.main() doesn't respond to SIGINT
     try:
