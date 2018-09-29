@@ -5,6 +5,7 @@ import os
 import subprocess
 from collections import defaultdict
 from pprint import PrettyPrinter
+from threading import Timer
 from typing import List, Dict
 from os.path import expanduser
 import re
@@ -89,60 +90,66 @@ def gmenu_item(title: str, activate=None, sub=None):
 
 if __name__ == '__main__':
 
-    with open(expanduser("~/.ssh/config")) as cf:
-        conf = SshConfig(cf.readlines())
-
-    hostlist: List[Host] = []
-
-    hostprops = defaultdict(dict)
-
-    for h in conf.hosts():
-        props = conf.host(h)
-        if "*" in h:
-            if "$expand" in props:
-                for e in props["$expand"].split(","):
-                    hostprops[h.replace("*", e.strip())].update(props)
-            else:
-                print(f"Skip {h}")
-        else:
-            hostprops[h].update(props)
-
-    print(PrettyPrinter().pprint(hostprops))
-
-    hostlist = [Host(h, p) for h, p in hostprops.items()]
-
     ind = AppIndicator3.Indicator.new(
         "SSHanty",
         "utilities-terminal",
         AppIndicator3.IndicatorCategory.APPLICATION_STATUS)
     ind.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
-    hostlist.sort(key=Host.sortkey)
-    hostsgrouped = itertools.groupby(hostlist, lambda h: h.group)
+    def setup():
 
-    menu = gmenu(
-            [gmenu_item(
-                prefix, sub=
-                gmenu(
-                    [gmenu_item(
-                        gh.leafname, sub=
-                        gmenu(
-                            [
-                                gmenu_item("Shell",
-                                           activate=lambda h=gh: open_shell(h.dnsname, h.profile)),
-                                gmenu_item("Screen",
-                                           activate=lambda h=gh: open_shell(h.dnsname, h.profile, screen=True)),
-                                gmenu_item("Root Shell",
-                                           activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True)),
-                                gmenu_item("Root Screen",
-                                           activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True, screen=True))
-                            ] + [gmenu_item(f"Tunnel {p}",
-                                            activate=lambda h=gh: open_tunnel(h.dnsname, p)) for p in gh.tunnels]
-                        )) for gh in grouphosts])
-            ) for prefix, grouphosts in hostsgrouped])
+        with open(expanduser("~/.ssh/config")) as cf:
+            conf = SshConfig(cf.readlines())
 
-    menu.show_all()
-    ind.set_menu(menu)
+        hostlist: List[Host] = []
+
+        hostprops = defaultdict(dict)
+
+        for h in conf.hosts():
+            props = conf.host(h)
+            if "*" in h:
+                if "$expand" in props:
+                    for e in props["$expand"].split(","):
+                        hostprops[h.replace("*", e.strip())].update(props)
+                else:
+                    print(f"Skip {h}")
+            else:
+                hostprops[h].update(props)
+
+        print(PrettyPrinter().pprint(hostprops))
+
+        hostlist = [Host(h, p) for h, p in hostprops.items()]
+
+        hostlist.sort(key=Host.sortkey)
+        hostsgrouped = itertools.groupby(hostlist, lambda h: h.group)
+
+        menu = gmenu(
+                [gmenu_item(
+                    prefix, sub=
+                    gmenu(
+                        [gmenu_item(
+                            gh.leafname, sub=
+                            gmenu(
+                                [
+                                    gmenu_item("Shell",
+                                               activate=lambda h=gh: open_shell(h.dnsname, h.profile)),
+                                    gmenu_item("Screen",
+                                               activate=lambda h=gh: open_shell(h.dnsname, h.profile, screen=True)),
+                                    gmenu_item("Root Shell",
+                                               activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True)),
+                                    gmenu_item("Root Screen",
+                                               activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True, screen=True))
+                                ] + [gmenu_item(f"Tunnel {p}",
+                                                activate=lambda h=gh: open_tunnel(h.dnsname, p)) for p in gh.tunnels]
+                            )) for gh in grouphosts])
+                ) for prefix, grouphosts in hostsgrouped] + [
+                    gmenu_item("Reload", activate=lambda: Timer(0.25, setup).start())
+                ])
+
+        menu.show_all()
+        ind.set_menu(menu)
+
+    setup()
 
     # Use GLib because Gtk.main() doesn't respond to SIGINT
     try:
