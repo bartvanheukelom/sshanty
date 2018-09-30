@@ -136,7 +136,7 @@ if __name__ == '__main__':
                                     gmenu_item("Root Screen",
                                                activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True, screen=True))
                                 ] + [gmenu_item(f"Tunnel {p}",
-                                                activate=lambda h=gh: open_tunnel(h.dnsname, p)) for p in gh.tunnels]
+                                                activate=lambda gh=gh, p=p: open_tunnel(gh.dnsname, p)) for p in gh.tunnels]
                             )) for gh in grouphosts])
                 ) for prefix, grouphosts in hostsgrouped] + [
                     Gtk.SeparatorMenuItem(),
