@@ -6,7 +6,6 @@ from pprint import PrettyPrinter
 from typing import Dict
 
 import indicator
-import keys
 from sshconf import SshConfig
 
 
@@ -58,10 +57,11 @@ def readconfig(p=False):
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         cmd = sys.argv[1]
-        if cmd == "keys":
-            keys.run()
-        else:
-            print(f"Unknown command {cmd}")
-            exit(1)
     else:
+        cmd = "indicator"
+
+    if cmd == "indicator":
         indicator.start()
+    else:
+        print(f"Unknown command {cmd}")
+        exit(1)
