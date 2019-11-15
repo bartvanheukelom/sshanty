@@ -13,8 +13,8 @@ from gi.repository import Gtk, AppIndicator3, GLib
 import sshanty
 
 
-def open_tunnel(host, port):
-    open_terminal(['ssh', host, '-N', '-v', '-L', f"127.0.0.1:{port}:localhost:{port}"], profile="Blue")
+def open_tunnel(host, port_from, port_to):
+    open_terminal(['ssh', host, '-N', '-v', '-L', f"127.0.0.1:{port_from}:127.0.0.1:{port_to}"], profile="Blue")
 
 
 def open_shell(host, profile, root=False, screen=False):
@@ -93,12 +93,13 @@ def start():
                                                activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True)),
                                     gmenu_item("Root Screen",
                                                activate=lambda h=gh: open_shell(h.dnsname, h.profile, root=True, screen=True))
-                                ] + [gmenu_item(f"Tunnel {p}",
-                                                activate=lambda gh=gh, p=p: open_tunnel(gh.dnsname, p)) for p in gh.tunnels]
+                                ] + [gmenu_item(f"Tunnel {p[0]}->{p[1]}",
+                                                activate=lambda gh=gh, p=p: open_tunnel(gh.dnsname, *p)) for p in gh.tunnels]
                             )) for gh in grouphosts])
                 ) for prefix, grouphosts in hostsgrouped] + [
                     Gtk.SeparatorMenuItem(),
-                    gmenu_item("Reload", activate=lambda: Timer(0.25, setup).start())
+                    gmenu_item("Reload", activate=lambda: Timer(0.25, setup).start()),
+                    gmenu_item("Quit", activate=lambda: exit(0))
                 ])
 
         menu.show_all()

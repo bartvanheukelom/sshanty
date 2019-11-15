@@ -18,7 +18,13 @@ class Host:
         self.leafname = self.name[-1]
         self.fullname = ".".join(self.name)
         self.profile = props.get("$profile")
-        self.tunnels = [int(x.strip()) for x in props.get("$tunnels", "").split(",") if x.strip()]
+
+        def parse_tunnel(x: str):
+            f, _, t = [u.strip() for u in x.partition("=")]
+            pf = int(f)
+            pt = int(t) if t else pf
+            return pf, pt
+        self.tunnels = [parse_tunnel(x) for x in props.get("$tunnels", "").split(",") if x.strip()]
 
     def __repr__(self):
         return self.fullname
